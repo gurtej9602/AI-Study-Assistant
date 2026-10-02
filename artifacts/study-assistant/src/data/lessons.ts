@@ -13,8 +13,16 @@ export type StudySession = {
     explanation: string;
     concept: string;
   }[];
-  answers: { questionIndex: number; selectedIndex: number; correct: boolean }[];
+  answers: {
+    questionIndex: number;
+    selectedIndex: number;
+    correct: boolean;
+    feedback?: string;
+    misconception?: string;
+    weakConcept?: string;
+  }[];
   followUp?: boolean;
+  source?: 'gemini' | 'sample';
 };
 
 export const STORAGE_KEY = 'study-assistant-sessions';

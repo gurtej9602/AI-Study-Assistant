@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: study
+    description: Gemini-powered study lessons and practice
 paths:
   /healthz:
     get:
@@ -24,6 +26,120 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /study/lessons:
+    post:
+      operationId: generateStudyLesson
+      tags: [study]
+      summary: Generate a study lesson for a topic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudyLessonInput"
+      responses:
+        "200":
+          description: Generated study lesson
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyLesson"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Gemini free-tier quota reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Gemini returned an invalid response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Gemini API key or project is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /study/evaluate:
+    post:
+      operationId: evaluateStudyAnswer
+      tags: [study]
+      summary: Evaluate a student's answer and explain it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudyAnswerInput"
+      responses:
+        "200":
+          description: Answer evaluation and guidance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyAnswerEvaluation"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Gemini free-tier quota reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Gemini API key or project is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /study/practice:
+    post:
+      operationId: generateStudyPractice
+      tags: [study]
+      summary: Generate additional questions for weak concepts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudyPracticeInput"
+      responses:
+        "200":
+          description: Additional targeted practice questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudyPractice"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Gemini free-tier quota reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Gemini API key or project is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +149,151 @@ components:
           type: string
       required:
         - status
+    StudyLessonInput:
+      type: object
+      properties:
+        topic:
+          type: string
+          minLength: 2
+          maxLength: 160
+        level:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required: [topic, level]
+    StudyConcept:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+      required: [title, detail]
+    StudyExample:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+      required: [title, detail]
+    StudyQuestion:
+      type: object
+      properties:
+        prompt:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        correctIndex:
+          type: integer
+          minimum: 0
+        explanation:
+          type: string
+        concept:
+          type: string
+      required: [prompt, options, correctIndex, explanation, concept]
+    StudyLesson:
+      type: object
+      properties:
+        topic:
+          type: string
+        explanation:
+          type: string
+        keyConcepts:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyConcept"
+        examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyExample"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyQuestion"
+      required: [topic, explanation, keyConcepts, examples, questions]
+    StudyAnswerInput:
+      type: object
+      properties:
+        topic:
+          type: string
+          minLength: 2
+          maxLength: 160
+        question:
+          type: string
+          minLength: 1
+          maxLength: 1200
+        concept:
+          type: string
+          minLength: 1
+          maxLength: 200
+        studentAnswer:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        correctAnswer:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        expectedExplanation:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required: [topic, question, concept, studentAnswer, correctAnswer, expectedExplanation]
+    StudyAnswerEvaluation:
+      type: object
+      properties:
+        correct:
+          type: boolean
+        feedback:
+          type: string
+        misconception:
+          type: string
+        weakConcept:
+          type: string
+        practicePrompt:
+          type: string
+      required: [correct, feedback, misconception, weakConcept, practicePrompt]
+    StudyPracticeInput:
+      type: object
+      properties:
+        topic:
+          type: string
+          minLength: 2
+          maxLength: 160
+        level:
+          type: string
+          minLength: 1
+          maxLength: 80
+        weakConcepts:
+          type: array
+          items:
+            type: string
+          maxItems: 12
+        previousQuestions:
+          type: array
+          items:
+            type: string
+          maxItems: 12
+        questionCount:
+          type: integer
+          minimum: 1
+          maximum: 5
+      required: [topic, level, weakConcepts, previousQuestions, questionCount]
+    StudyPractice:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyQuestion"
+      required: [questions]
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 

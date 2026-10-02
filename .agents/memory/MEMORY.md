@@ -1,0 +1,1 @@
+- [Gemini Free-tier constraint](gemini-free-tier.md) — Keep the Study Assistant on Google’s direct Free tier and preserve the user-approved data-use disclosure.
