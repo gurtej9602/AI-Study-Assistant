@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Study Assistant"
+description = "An AI-powered study companion that explains topics simply, creates examples and quizzes, evaluates answers, and generates targeted follow-up practice."
+version = "1.0.0"
+id = "artifacts/study-assistant"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20973
+
+[services.development]
+run = "pnpm --filter @workspace/study-assistant run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/study-assistant", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/study-assistant/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20973"
+BASE_PATH = "/"
