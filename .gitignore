@@ -54,3 +54,8 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local data stores
+/data/
+/artifacts/data/
+

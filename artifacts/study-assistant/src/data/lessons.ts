@@ -133,18 +133,24 @@ export function createFollowUpSession(session: StudySession, weakConcepts: strin
   };
 }
 
-export function readSessions(): StudySession[] {
+export function getStorageKey(studentId?: string): string {
+  return studentId ? `study-sessions-${studentId}` : STORAGE_KEY;
+}
+
+export function readSessions(studentId?: string): StudySession[] {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+    const key = getStorageKey(studentId);
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
     return Array.isArray(parsed) ? parsed as StudySession[] : [];
   } catch {
     return [];
   }
 }
 
-export function saveSession(session: StudySession) {
-  const all = readSessions().filter((item) => item.id !== session.id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([session, ...all]));
+export function saveSession(session: StudySession, studentId?: string) {
+  const key = getStorageKey(studentId);
+  const all = readSessions(studentId).filter((item) => item.id !== session.id);
+  localStorage.setItem(key, JSON.stringify([session, ...all]));
 }
 
 export function accuracy(session: StudySession) {

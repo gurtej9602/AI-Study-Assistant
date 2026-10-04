@@ -8,6 +8,8 @@ import {
   GenerateStudyPracticeBody,
   GenerateStudyPracticeResponse,
 } from "@workspace/api-zod";
+import { store } from "../lib/store";
+import { getBearerToken } from "./auth";
 
 const router: IRouter = Router();
 const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -262,6 +264,82 @@ router.post("/study/practice", async (req, res): Promise<void> => {
     req.log.warn({ status: failure.status, diagnostic: failure.diagnostic }, "Practice generation failed");
     res.status(failure.status).json({ error: failure.message });
   }
+});
+
+// GET /api/study/sessions - Read sessions for authenticated student
+router.get("/study/sessions", (req, res) => {
+  const token = getBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ error: "Please log in to view saved sessions." });
+  }
+
+  const student = store.getStudentByToken(token);
+  if (!student) {
+    return res.status(401).json({ error: "Session invalid or expired." });
+  }
+
+  const sessions = store.getStudentSessions(student.id);
+  res.json({ sessions });
+});
+
+// POST /api/study/sessions - Save session and update student's learning path
+router.post("/study/sessions", (req, res) => {
+  const token = getBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ error: "Please log in to save study sessions." });
+  }
+
+  const student = store.getStudentByToken(token);
+  if (!student) {
+    return res.status(401).json({ error: "Session invalid or expired." });
+  }
+
+  const sessionData = req.body;
+  if (!sessionData || !sessionData.topic) {
+    return res.status(400).json({ error: "Invalid session payload." });
+  }
+
+  const accuracy = Array.isArray(sessionData.answers) && sessionData.answers.length > 0
+    ? Math.round((sessionData.answers.filter((a: { correct: boolean }) => a.correct).length / sessionData.answers.length) * 100)
+    : 0;
+
+  const saved = store.recordStudySession({
+    studentId: student.id,
+    topic: sessionData.topic,
+    level: sessionData.level || "General",
+    createdAt: sessionData.createdAt || new Date().toISOString(),
+    explanation: sessionData.explanation || "",
+    keyConcepts: sessionData.keyConcepts || [],
+    examples: sessionData.examples || [],
+    questions: sessionData.questions || [],
+    answers: sessionData.answers || [],
+    accuracy,
+    followUp: Boolean(sessionData.followUp),
+    source: sessionData.source || "gemini",
+  });
+
+  const updatedStudent = store.findStudentById(student.id);
+
+  res.status(201).json({
+    session: saved,
+    learningPath: updatedStudent?.learningPath,
+  });
+});
+
+// DELETE /api/study/sessions/:id - Remove saved session
+router.delete("/study/sessions/:id", (req, res) => {
+  const token = getBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ error: "Please log in to remove sessions." });
+  }
+
+  const student = store.getStudentByToken(token);
+  if (!student) {
+    return res.status(401).json({ error: "Session invalid or expired." });
+  }
+
+  const deleted = store.deleteStudentSession(student.id, req.params.id);
+  res.json({ success: deleted });
 });
 
 export default router;
