@@ -3,8 +3,13 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "preinstall": "node -e \"if (!process.env.npm_config_user_agent?.startsWith('pnpm/')) { console.error('Use pnpm instead'); process.exit(1); }\"",
+    "dev": "pnpm --filter @workspace/study-assistant run dev",
+    "dev:api": "pnpm --filter @workspace/api-server run dev",
+    "dev:all": "pnpm --filter @workspace/api-server --filter @workspace/study-assistant --parallel run dev",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "render:build": "pnpm --filter @workspace/study-assistant run build && pnpm --filter @workspace/api-server run build",
+    "start": "pnpm --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },

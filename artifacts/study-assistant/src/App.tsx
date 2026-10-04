@@ -7,7 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Route, Switch, useLocation, Router as WouterRouter, Link } from 'wouter';
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, CircleHelp, Clock3, FlaskConical, Leaf, Lightbulb, ListChecks, Sparkles, Trash2, Waves } from 'lucide-react';
-import { accuracy, presets, readSessions, saveSession, type StudySession } from './data/lessons';
+import { accuracy, presets, readSessions, saveSession, createLesson, createFollowUpSession, type StudySession } from './data/lessons';
 
 const queryClient = new QueryClient();
 
@@ -20,7 +20,6 @@ function Shell({ children, current }: { children: ReactNode; current: 'study' | 
         <Link href="/" data-testid="link-study" className={`nav-link ${current === 'study' ? 'active' : ''}`}><BookOpen size={16} />Study session</Link>
         <Link href="/progress" data-testid="link-progress" className={`nav-link ${current === 'progress' ? 'active' : ''}`}><ListChecks size={16} />Your progress</Link>
       </nav>
-      <div className="rail-note"><strong>About Gemini Free</strong>Free-tier quotas apply. Google may use submitted topics and answers to improve its products. Your progress history stays in this browser.</div>
       <div className="rail-foot">A little understanding, every day.</div>
     </aside>
     <div className="main-area">
@@ -73,7 +72,23 @@ function Home() {
         setReviewedConcepts([]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      onError: (error) => setApiError(error.message || 'Gemini could not create that lesson. Please try again.'),
+      onError: (error) => {
+        const localLesson = createLesson(cleanTopic, level);
+        if (localLesson) {
+          setSession({
+            ...localLesson,
+            source: 'sample',
+          });
+          setQuestionIndex(0);
+          setSelected(null);
+          setHasAnswered(false);
+          setComplete(false);
+          setReviewedConcepts([]);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+        setApiError(error.message || 'Gemini could not create that lesson. Please add GEMINI_API_KEY to your .env file.');
+      },
     });
   };
   const pickPreset = (name: string) => { setChosen(name); setTopic(name); };
@@ -81,6 +96,29 @@ function Home() {
     if (!session || selected === null) return;
     const question = session.questions[questionIndex];
     setApiError('');
+    const fallbackAnswer = () => {
+      const isCorrect = selected === question.correctIndex;
+      const answer = {
+        questionIndex,
+        selectedIndex: selected,
+        correct: isCorrect,
+        feedback: isCorrect
+          ? `Correct! ${question.explanation}`
+          : `Not quite. ${question.explanation}`,
+        misconception: '',
+        weakConcept: isCorrect ? '' : question.concept,
+      };
+      setSession((current) => current
+        ? { ...current, answers: [...current.answers.filter((item) => item.questionIndex !== questionIndex), answer] }
+        : current);
+      setHasAnswered(true);
+    };
+
+    if (session.source === 'sample') {
+      fallbackAnswer();
+      return;
+    }
+
     answerMutation.mutate({
       data: {
         topic: session.topic,
@@ -105,7 +143,9 @@ function Home() {
           : current);
         setHasAnswered(true);
       },
-      onError: (error) => setApiError(error.message || 'Gemini could not evaluate that answer. Please try again.'),
+      onError: () => {
+        fallbackAnswer();
+      },
     });
   };
   const nextQuestion = () => {
@@ -129,6 +169,28 @@ function Home() {
       .filter((concept): concept is string => Boolean(concept)))];
     const focusConcepts = weakConcepts.length ? weakConcepts : session.keyConcepts.map((concept) => concept.title);
     setApiError('');
+    const handleFollowUpFallback = () => {
+      const followUp = createFollowUpSession(session, focusConcepts);
+      if (followUp) {
+        setSession({
+          ...followUp,
+          source: 'sample',
+        });
+        setQuestionIndex(0);
+        setSelected(null);
+        setHasAnswered(false);
+        setComplete(false);
+        setReviewedConcepts([]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return true;
+      }
+      return false;
+    };
+
+    if (session.source === 'sample') {
+      if (handleFollowUpFallback()) return;
+    }
+
     practiceMutation.mutate({
       data: {
         topic: session.topic,
@@ -155,7 +217,11 @@ function Home() {
         setReviewedConcepts([]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      onError: (error) => setApiError(error.message || 'Gemini could not create more practice. Please try again.'),
+      onError: (error) => {
+        if (!handleFollowUpFallback()) {
+          setApiError(error.message || 'Gemini could not create more practice. Please add GEMINI_API_KEY to your .env file.');
+        }
+      },
     });
   };
   const currentQuestion = session?.questions[questionIndex];

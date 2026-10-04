@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: ai-study-assistant
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: pnpm install && pnpm approve-builds --all && pnpm render:build
+    startCommand: pnpm start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash

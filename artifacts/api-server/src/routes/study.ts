@@ -10,7 +10,7 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
-const model = "gemini-3.5-flash";
+const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const tutorInstructions = [
   "You are a patient, accurate tutor for students.",
@@ -60,8 +60,27 @@ async function generateJson(prompt: string): Promise<unknown> {
   if (!text) {
     throw new Error("Gemini returned an empty response.");
   }
-  const json = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  return JSON.parse(json) as unknown;
+
+  try {
+    return JSON.parse(text);
+  } catch {}
+
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenceMatch?.[1]) {
+    try {
+      return JSON.parse(fenceMatch[1].trim());
+    } catch {}
+  }
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(text.slice(firstBrace, lastBrace + 1));
+    } catch {}
+  }
+
+  throw new Error(`Failed to parse JSON from response: ${text.slice(0, 100)}...`);
 }
 
 function isValidQuiz(
@@ -80,6 +99,13 @@ function isValidQuiz(
 }
 
 function getApiFailure(error: unknown): { status: number; message: string; diagnostic: string } {
+  if (error instanceof Error && error.message.includes("Gemini API key is not configured")) {
+    return {
+      status: 401,
+      message: "Gemini API key is not configured. Please add GEMINI_API_KEY to your .env file to generate custom AI lessons.",
+      diagnostic: "MISSING_GEMINI_KEY",
+    };
+  }
   const details =
     error && typeof error === "object"
       ? (error as { status?: unknown; code?: unknown; message?: unknown })
