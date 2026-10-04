@@ -314,6 +314,7 @@
   padding: 32px 30px;
   box-shadow: 0 20px 40px rgba(27, 33, 49, 0.22);
   animation: scaleUp 0.22s ease-out;
+  box-sizing: border-box;
 }
 
 @keyframes scaleUp {
@@ -414,6 +415,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .auth-field label {
   font-size: 11px;
@@ -423,6 +427,9 @@
   letter-spacing: 0.05em;
 }
 .auth-field input, .auth-select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   border: 1px solid #dcd5c7;
   background: #fff;
   border-radius: 8px;
@@ -440,6 +447,8 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 .input-with-icon svg {
   position: absolute;
@@ -448,14 +457,18 @@
   pointer-events: none;
 }
 .input-with-icon input {
+  box-sizing: border-box;
   padding-left: 36px;
   width: 100%;
+  max-width: 100%;
 }
 
 .auth-row-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .auth-field-hint {
@@ -928,12 +941,15 @@
   color: #4b5266;
 }
 .custom-goal-field input {
+  box-sizing: border-box;
+  width: 100%;
   border: 1px solid #dcd5c7;
   background: #fff;
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 13px;
   color: #293042;
+  outline: none;
 }
 
 .track-switcher-footer {
